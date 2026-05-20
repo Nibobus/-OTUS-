@@ -8,7 +8,7 @@
    - **`Films - Orders`** 
      Один-ко-многим (1:N)
      
-     - **`Films - Directors/`**
+   - **`Films - Directors/`**
     Многие-ко-многим (M:N)
 
    - **`Films ↔ Actors/`**
