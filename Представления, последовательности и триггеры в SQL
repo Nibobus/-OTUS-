@@ -1,0 +1,56 @@
+--Создание представления
+CREATE OR REPLACE VIEW CustomerMovieRentalView AS
+SELECT
+    c.first_name || ' ' || c.last_name AS customer_name,
+    c.phone_number,
+    m.title AS movie_title,
+    r.rental_date,
+    (r.return_date - r.rental_date) AS rental_days
+FROM rentals r
+JOIN customers c ON r.customer_id = c.customer_id
+JOIN movies m ON r.movie_id = m.movie_id;
+
+--Фильмы, взятые в аренду в марте 2022 года
+SELECT
+    customer_name,
+    phone_number,
+    movie_title,
+    rental_days
+FROM CustomerMovieRentalView
+WHERE rental_date >= '2022-03-01'
+  AND rental_date <  '2022-04-01'
+ORDER BY rental_date;
+
+-- Создайте триггер, который автоматически обновляет поле rental_date в таблице Rental на текущую дату, если пользователь пытается вставить запись с пустым значением rental_date. Используйте BEFORE INSERT триггер.
+CREATE OR REPLACE FUNCTION set_rental_date_on_insert()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF NEW.rental_date IS NULL THEN
+        NEW.rental_date := CURRENT_DATE;
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER before_rental_insert
+BEFORE INSERT ON rentals
+FOR EACH ROW
+EXECUTE FUNCTION set_rental_date_on_insert();
+
+--Создайте триггер, который предотвращает удаление записей о фильмах, если они связаны с таблицей Rental. Используйте BEFORE DELETE триггер.
+CREATE OR REPLACE FUNCTION prevent_movie_delete()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM rentals r WHERE r.movie_id = OLD.movie_id) 
+    THEN RAISE EXCEPTION 'Cannot delete movie "%" (id=%): it has active or historical rentals.',
+    OLD.title, OLD.movie_id;
+    END IF;
+    RETURN OLD;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER before_movie_delete
+BEFORE DELETE ON movies
+FOR EACH ROW
+EXECUTE FUNCTION prevent_movie_delete();
+
