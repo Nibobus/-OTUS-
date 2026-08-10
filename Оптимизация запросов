@@ -1,0 +1,43 @@
+--Массовая вставка 1000 клиентов
+INSERT INTO customers (
+    first_name,
+    last_name,
+    email,
+    phone_number,
+    address,
+    registration_date,
+    preferences
+)
+SELECT
+    'FirstName_' || g,
+    'LastName_'  || g,
+    'customer_'  || g || '@example.com',
+    LPAD((5000000000 + g)::TEXT, 10, '0'),
+    g || ' Bulk Insert St',
+    CURRENT_DATE - (g % 365) * INTERVAL '1 day',
+    jsonb_build_object(
+        'preferred_genres',
+        CASE g % 4
+            WHEN 0 THEN ARRAY['Action', 'Sci-Fi']
+            WHEN 1 THEN ARRAY['Drama']
+            WHEN 2 THEN ARRAY['Comedy']
+            ELSE        ARRAY['Animation']
+        END,
+        'newsletter',
+        (g % 2 = 0)
+    )
+FROM generate_series(1, 1000) AS g;
+
+-- Обновление рейтинга фильмов после 2015 год
+CREATE INDEX IF NOT EXISTS idx_movies_release_year
+    ON movies (release_year);
+
+UPDATE movies
+SET rating = LEAST(rating + 0.2, 9.9)
+WHERE release_year > 2015
+  AND rating IS NOT NULL;
+
+SELECT movie_id, title, release_year, rating
+FROM movies
+WHERE release_year > 2015
+ORDER BY release_year;
