@@ -1,0 +1,29 @@
+--Функция GetMovieDurationInHours
+CREATE OR REPLACE FUNCTION GetMovieDurationInHours(p_movie_id INT)
+RETURNS NUMERIC AS $$
+BEGIN
+RETURN (
+SELECT ROUND(duration / 60.0, 2)
+FROM movies
+WHERE movie_id = p_movie_id);
+END;
+$$ LANGUAGE plpgsql;
+
+--Функция GetMoviesByDirector
+CREATE OR REPLACE FUNCTION GetMoviesByDirector(p_director TEXT)
+RETURNS TABLE (
+    title VARCHAR(255),
+    release_year INT,
+    genre VARCHAR(100)
+) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT
+        m.title,
+        m.release_year,
+        m.genre
+    FROM movies m
+    WHERE m.additional_info->>'director' = p_director
+    ORDER BY m.release_year;
+END;
+$$ LANGUAGE plpgsql;
