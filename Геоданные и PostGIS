@@ -1,0 +1,46 @@
+--Напишите запрос, который выводит названия всех достопримечательностей и их координаты (широту и долготу). Используйте функцию ST_X() для извлечения долготы и ST_Y() для широты из поля location.
+SELECT
+name,
+ST_Y(location) AS latitude,
+ST_X(location) AS longitude
+FROM landmarks
+ORDER BY id;
+
+--Маршруты, начинающиеся в радиусе 5 км от центра Парижа
+SELECT *
+FROM routes
+WHERE ST_DWithin(
+start_location::geography,
+ST_SetSRID(ST_MakePoint(2.3522, 48.8566), 4326)::geography, 5000);
+
+--Достопримечательности, полностью находящиеся внутри границ территории Лувра
+SELECT DISTINCT l.name
+FROM landmarks AS l
+JOIN landmarks AS louvre
+ON louvre.name = 'Лувр'
+AND louvre.boundary IS NOT NULL
+WHERE ST_Within(l.location, louvre.boundary);
+
+--Добавление «Музея Луи Виттона»
+INSERT INTO landmarks (name, location)
+VALUES ('Музей Луи Виттона', ST_SetSRID(ST_MakePoint(2.349014, 48.864716), 4326));
+
+--Длина маршрута, соединяющего Эйфелеву башню и Лувр
+WITH eiffel AS (
+    SELECT location
+    FROM landmarks
+    WHERE name = 'Эйфелева башня'),
+louvre AS (
+    SELECT location
+    FROM landmarks
+    WHERE name = 'Лувр')
+SELECT ST_Length(r.route::geography) AS length_meters
+FROM routes AS r
+CROSS JOIN eiffel AS e
+CROSS JOIN louvre AS l
+WHERE (
+  ST_Equals(r.start_location, e.location)
+  AND ST_Equals(r.end_location, l.location))
+OR (
+  ST_Equals(r.start_location, l.location)
+  AND ST_Equals(r.end_location, e.location));
