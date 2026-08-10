@@ -1,0 +1,54 @@
+-- Процедура AddNewMovie
+CREATE OR REPLACE PROCEDURE AddNewMovie(
+    IN p_title VARCHAR(255),
+    IN p_release_year INT,
+    IN p_genre VARCHAR(100),
+    IN p_rating DECIMAL(2,1),
+    IN p_duration INT,
+    IN p_description TEXT,
+    IN p_additional_info JSONB
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+
+    IF EXISTS (
+        SELECT 1
+        FROM movies
+        WHERE title = p_title
+          AND release_year = p_release_year
+    ) THEN
+        RAISE NOTICE 'Дубль: фильм "%" (%) уже существует в базе данных.', p_title, p_release_year;
+    ELSE
+        -- Вставляем новый фильм
+        INSERT INTO movies (title, release_year, genre, rating, duration, description, additional_info)
+        VALUES (p_title, p_release_year, p_genre, p_rating, p_duration, p_description, p_additional_info);
+        RAISE NOTICE 'Фильм "%" (%) успешно добавлен.', p_title, p_release_year;
+    END IF;
+END;
+$$;
+
+--Процедура GetCustomerRentalCount
+CREATE OR REPLACE PROCEDURE GetCustomerRentalCount(
+    IN  p_customer_id      INT,
+    OUT unique_movie_count INT,
+    OUT total_rentals      INT
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    SELECT
+        COUNT(DISTINCT movie_id),
+        COUNT(*)
+    INTO unique_movie_count, total_rentals
+    FROM rentals
+    WHERE customer_id = p_customer_id;
+
+    IF unique_movie_count = 0 THEN
+        RAISE NOTICE 'Клиент с id % не имеет записей об аренде.', p_customer_id;
+    ELSE
+        RAISE NOTICE 'Клиент %: уникальных фильмов — %, всего аренд — %.',
+            p_customer_id, unique_movie_count, total_rentals;
+    END IF;
+END;
+$$;
